@@ -6,23 +6,23 @@
 
 //#define SEED_LEVER_ENABLED
 
-#define MOUSE_LOADCELL_DOUT_PIN 2
-#define MOUSE_LOADCELL_SCK_PIN 3
+#define MOUSE_LOADCELL_DOUT_PIN 52
+#define MOUSE_LOADCELL_SCK_PIN 53
 #define ARM_LOADCELL_DOUT_PIN 15
 #define ARM_LOADCELL_SCK_PIN 14
-#define START_PIN 4
+#define START_PIN 18
 // TODO : sleep
-#define SEED_DIRECTION_PIN 5
-#define SEED_STEP_PIN 6
-#define SEED_LIMIT_SWITCH 13
+#define SEED_DIRECTION_PIN 3
+#define SEED_STEP_PIN 2
+#define SEED_LIMIT_SWITCH 22
 #ifdef SEED_LEVER_ENABLED
 #define SEED_LEVER 9
 #endif  
-#define HEADPOST_PIN_A 8
-#define HEADPOST_PIN_B 0
-#define HEADPOST_DIRECTION_PIN 12
-#define HEADPOST_STEP_PIN 11
-#define HEADPOST_LIMIT_SWITCH 7
+#define HEADPOST_PIN_A 50
+#define HEADPOST_PIN_B 51
+#define HEADPOST_DIRECTION_PIN 1
+#define HEADPOST_STEP_PIN 0
+#define HEADPOST_LIMIT_SWITCH 48
 #define CHIP_SELECT 10
 
 AccelStepper * seedStepper = new AccelStepper(AccelStepper::DRIVER, SEED_STEP_PIN, SEED_DIRECTION_PIN);
@@ -39,12 +39,12 @@ float loadBuffer[10];
 float runningSum = 0.0f;
 int p = 0;
 
-#define HEADFIX_SPEED 20000.0f
-#define HEADFIX_ACCEL 10000.0f
+#define HEADFIX_SPEED 1000.0f
+#define HEADFIX_ACCEL 1000.0f
 #define HEADFIX_DISTANCE 40
 
-#define SEED_SPEED 20000.0f
-#define SEED_ACCEL 5000.0f
+#define SEED_SPEED 1000.0f
+#define SEED_ACCEL 1000.0f
 #define SEED_FETCH_DISTANCE 950
 #define SEED_PRESENT_DISTANCE 150
 
@@ -322,6 +322,7 @@ void loop() {
   
   switch (seedState) {
     case IDLE:
+      Serial.println("IDLE");
       if (digitalRead(SEED_LIMIT_SWITCH) == HIGH) {
         seedStepper->setSpeed(-1000.0f);
         seedStepper->runSpeed();
@@ -338,35 +339,41 @@ void loop() {
       }
       break;
     case RETRIEVING_SEED:
+    Serial.print("RETRIEVING_SEED");
       if (!seedStepper->run()) {
         //startRetraction = millis();
         seedState = SEED_RETRIEVED;
       }
       break;
     case SEED_RETRIEVED:
+    Serial.println("SEED_RETRIEVED");
       if (!isHeadFix || !isTimedPresentation || millis() - endPresentation > presentationInterval) {
         seedStepper->move(SEED_FETCH_DISTANCE);        
         seedState = RAISING_SEED;
       }
       break;
     case RAISING_SEED:
+    Serial.println("RAISING_SEED");
       if (!seedStepper->run()) {
           seedState = SEED_READY;
       }
       break;
     case SEED_READY:
+    Serial.println("SEED_READY");
       if ((isTimedPresentation || abs(currentForce) > rewardThreshold) && ((isHeadFix && (headpostState == FIXING || headpostState == SETTLING || headpostState == FIXED)) || (!isHeadFix && digitalRead(HEADPOST_PIN_A) == LOW && digitalRead(HEADPOST_PIN_B) == LOW))) {
         seedStepper->move(SEED_PRESENT_DISTANCE);
         seedState = PRESENTING_SEED;
       }
       break;
     case PRESENTING_SEED:
+    Serial.println("PRESENTING_SEED");
       if (!seedStepper->run()) {
         startPresentation = millis();
         seedState = SEED_AVAILABLE;
       }
       break;
     case SEED_AVAILABLE:
+    Serial.println("SEED_AVAILABLE");
       if (millis() - startPresentation > presentationTime) {
         endPresentation = millis();
         seedStepper->move(-SEED_PRESENT_DISTANCE-SEED_FETCH_DISTANCE);
@@ -379,6 +386,7 @@ void loop() {
 
   switch (headpostState) {
     case DISENGAGED:
+    Serial.println("HEADPOST DISENGAGED");
       if (isHeadFix && digitalRead(HEADPOST_LIMIT_SWITCH) == HIGH) {
         headpostStepper->setSpeed(-1000.0f);
         headpostStepper->runSpeed();
@@ -387,6 +395,7 @@ void loop() {
       }
       break;
     case FREE:
+    Serial.println("HEADPOST FREE");
       endPresentation = 0;
       if (/*seedState == SEED_READY && */millis() - startFree > freeTime && digitalRead(HEADPOST_PIN_A) == LOW && digitalRead(HEADPOST_PIN_B) == LOW) {
         headpostStepper->move(HEADFIX_DISTANCE);
@@ -394,18 +403,21 @@ void loop() {
       }
       break;
     case FIXING:
+    Serial.println("HEADPOST FIXING");
       if (!headpostStepper->run()) {
         startFixation = millis();
         headpostState = SETTLING;
       }  
       break;
     case SETTLING:
+    Serial.println("HEADPOST SETTLING");
       if (millis() - startFixation >= samplePeriod) {
         headfixLoad = currentLoad;
         headpostState = FIXED;
       }
       break;
     case FIXED:
+    Serial.println("HEADPOST FIXED");
       if (currentLoad < headfixLoad - struggleThreshold || currentLoad > headfixLoad + struggleThreshold) {
         // self-release: reset successful fix counter and increment self release counter
         successfulFixes = 0;
@@ -428,6 +440,7 @@ void loop() {
       }
       break;
     case RELEASING:
+    Serial.println("HEADPOST RELEASING");
       // keep retracting until we hit the limit switch
       headpostStepper->move(-HEADFIX_DISTANCE);
       headpostStepper->run();

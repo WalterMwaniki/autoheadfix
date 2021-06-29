@@ -2,5 +2,6 @@
     "configuration": "cpu=atmega2560",
     "board": "arduino:avr:mega",
     "programmer": "arduino:arduinoasisp",
-    "sketch": "autoheadfix0.4.ino"
+    "sketch": "autoheadfix0.4.ino",
+    "port": "COM4"
 }
